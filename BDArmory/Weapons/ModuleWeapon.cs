@@ -981,6 +981,10 @@ namespace BDArmory.Weapons
 
         private float delayTime = -1;
 
+        [KSPField]
+        public float malusReductionPerShot = 1f; // Scale the per shot reduction in the visual aiming malus.
+        public float malusReduction = 1f;
+
         IEnumerator IncrementRippleIndex(float delay)
         {
             if (isRippleFiring) delay = 0;
@@ -3882,7 +3886,7 @@ namespace BDArmory.Weapons
                     // We want a slow random walk that improves rapidly with shots fired.
                     // float size = BDArmorySettings.AIMING_VISUAL_MALUS * ((smoothedPartVelocity - targetVelocity).OneNorm() / (1 + shotsFiredSinceAcquiringTarget) + BDArmorySettings.AIMING_VISUAL_MALUS * (smoothedPartAcceleration - targetAcceleration).OneNorm());
                     // kinematicAimMalus = factor * kinematicAimMalus + (1f - factor) * size * UnityEngine.Random.insideUnitSphere;
-                    float malusReduction = (1 + shotsFiredSinceAcquiringTarget) * (1f + Mathf.Min(Time.time - targetAcquisitionTime, 9f));
+                    malusReduction = (1 + malusReductionPerShot * shotsFiredSinceAcquiringTarget) * (1f + Mathf.Min(Time.time - targetAcquisitionTime, 9f));
                     float size = 0.001f * targetDistance * (smoothedPartVelocity - targetVelocity).OneNorm() / malusReduction + (smoothedPartAcceleration - targetAcceleration).OneNorm();
                     kinematicAimMalusDelta = 0.99f * kinematicAimMalusDelta + 0.01f * size * UnityEngine.Random.insideUnitSphere;
                     kinematicAimMalus = 0.9f * kinematicAimMalus + 0.1f / malusReduction * kinematicAimMalusDelta;
