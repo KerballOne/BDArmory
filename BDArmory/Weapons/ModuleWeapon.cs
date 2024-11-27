@@ -3882,7 +3882,7 @@ namespace BDArmory.Weapons
                     // We want a slow random walk that improves rapidly with shots fired.
                     // float size = BDArmorySettings.AIMING_VISUAL_MALUS * ((smoothedPartVelocity - targetVelocity).OneNorm() / (1 + shotsFiredSinceAcquiringTarget) + BDArmorySettings.AIMING_VISUAL_MALUS * (smoothedPartAcceleration - targetAcceleration).OneNorm());
                     // kinematicAimMalus = factor * kinematicAimMalus + (1f - factor) * size * UnityEngine.Random.insideUnitSphere;
-                    float malusReduction = (1 + shotsFiredSinceAcquiringTarget) * Mathf.Min(1f + Time.time - targetAcquisitionTime, 10f);
+                    float malusReduction = (1 + shotsFiredSinceAcquiringTarget) * (1f + Mathf.Min(Time.time - targetAcquisitionTime, 9f));
                     float size = 0.001f * targetDistance * (smoothedPartVelocity - targetVelocity).OneNorm() / malusReduction + (smoothedPartAcceleration - targetAcceleration).OneNorm();
                     kinematicAimMalusDelta = 0.99f * kinematicAimMalusDelta + 0.01f * size * UnityEngine.Random.insideUnitSphere;
                     kinematicAimMalus = 0.9f * kinematicAimMalus + 0.1f / malusReduction * kinematicAimMalusDelta;

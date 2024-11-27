@@ -1842,7 +1842,7 @@ namespace BDArmory.Control
 #if DEBUG
                             if (weapon.visualTargetVessel != null && weapon.visualTargetVessel.loaded) weaponAimDebugStrings.Add($" - Visual target {(weapon.visualTargetPart != null ? weapon.visualTargetPart.name : "CoM")} on {weapon.visualTargetVessel.vesselName}, distance: {(weapon.fireTransforms[0] != null ? (weapon.finalAimTarget - weapon.fireTransforms[0].position).magnitude : 0):F1}, radius: {weapon.targetRadius:F1} ({weapon.visualTargetVessel.GetBounds()}), max deviation: {weapon.maxDeviation}, firing tolerance: {weapon.FiringTolerance}");
                             if (weapon.turret) weaponAimDebugStrings.Add($" - Turret: pitch: {weapon.turret.Pitch:F3}° ({weapon.turret.minPitch}°—{weapon.turret.maxPitch}°), yaw: {weapon.turret.Yaw:F3}° ({-weapon.turret.yawRange / 2f}°—{weapon.turret.yawRange / 2f}°)");
-                            weaponAimDebugStrings.Add($" - Malus: {BDArmorySettings.AIMING_VISUAL_MALUS * weapon.kinematicAimMalus.magnitude:F2}, shots: {weapon.shotsFiredSinceAcquiringTarget}, reduction: {(1 + weapon.shotsFiredSinceAcquiringTarget) * Mathf.Min(1f + Time.time - weapon.targetAcquisitionTime, 10f):G4}");
+                            weaponAimDebugStrings.Add($" - Malus: {BDArmorySettings.AIMING_VISUAL_MALUS * weapon.kinematicAimMalus.magnitude:F2}, shots: {weapon.shotsFiredSinceAcquiringTarget}, reduction: {(1 + weapon.shotsFiredSinceAcquiringTarget) * (1f + Mathf.Min(Time.time - weapon.targetAcquisitionTime, 9f)):G4}");
 
 #endif
                         }
@@ -2507,14 +2507,14 @@ namespace BDArmory.Control
                             {
                                 if (foundCam && (foundCam.groundTargetPosition - targetVessel.CoM).sqrMagnitude > targetpaintAccuracyThreshold) //ally target acquisition
                                 {
-                                    if (BDArmorySettings.DEBUG_MISSILES) Debug.Log($"[BDArmory.MissileFire]: No targetCam, using allied {foundCam.vessel.vesselName}'s Laser target!");                                    
+                                    if (BDArmorySettings.DEBUG_MISSILES) Debug.Log($"[BDArmory.MissileFire]: No targetCam, using allied {foundCam.vessel.vesselName}'s Laser target!");
                                 }
                                 else //allied laser dot isn't present
                                 {
                                     dumbfiring = true; //so let them be used as unguided ordinance
                                     if (BDArmorySettings.DEBUG_MISSILES) Debug.Log($"[BDArmory.MissileFire]: No Laser target! Available cams: {targetingPods.Count}; switching to unguided firing");
                                     break;
-                                }                                
+                                }
                             }
                             //search for a laser point that corresponds with target vessel
                             float attemptStartTime = Time.time;
@@ -6770,7 +6770,7 @@ namespace BDArmory.Control
                                     {
                                         if (rd.Current != null && rd.Current.sonarMode != ModuleRadar.SonarModes.None)
                                         {
-                                            if (rd.Current.sonarMode == ModuleRadar.SonarModes.Active && results.foundTorpedo && results.foundHeatMissile && rd. Current.DynamicRadar) continue;
+                                            if (rd.Current.sonarMode == ModuleRadar.SonarModes.Active && results.foundTorpedo && results.foundHeatMissile && rd.Current.DynamicRadar) continue;
                                             rd.Current.EnableRadar();
                                             _sonarsEnabled = true;
                                         }
@@ -7699,7 +7699,7 @@ namespace BDArmory.Control
                         FireECM(10);
                     }
                     if (results.foundGPSMissile) //not really sure what you'd do vs a wireguided/INS torpedo - kill engines and active sonar + fire decoys to try and break detection by op4 passive sonar? fire bubblers to garble active sonar detection?
-                    {                        
+                    {
                     }
                 }
             }
@@ -8652,7 +8652,7 @@ namespace BDArmory.Control
                 return true;
             }
             else
-            {        
+            {
                 /*
                 using (List<Part>.Enumerator p = vessel.parts.GetEnumerator())
                     while (p.MoveNext())
@@ -8682,7 +8682,7 @@ namespace BDArmory.Control
                     }
                     return true;
                 }
-                
+
                 return false;
             }
         }
