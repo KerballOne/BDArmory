@@ -2161,12 +2161,18 @@ namespace BDArmory.Weapons
             if (BDArmorySettings.DEBUG_LINES && BDArmorySettings.DEBUG_WEAPONS && (weaponState == WeaponStates.Enabled || weaponState == WeaponStates.EnabledForSecondaryFiring) && vessel && !vessel.packed && !MapView.MapIsEnabled)
             {
                 GUIUtils.MarkPosition(debugTargetPosition, transform, Color.grey); //lets not have two MarkPositions use the same color...
-                GUIUtils.DrawLineBetweenWorldPositions(debugTargetPosition, debugTargetPosition + debugRelVelAdj, 2, Color.green);
-                GUIUtils.DrawLineBetweenWorldPositions(debugTargetPosition + debugRelVelAdj, debugTargetPosition + debugRelVelAdj + debugAccAdj, 2, Color.magenta);
-                GUIUtils.DrawLineBetweenWorldPositions(debugTargetPosition + debugRelVelAdj + debugAccAdj, debugTargetPosition + debugRelVelAdj + debugAccAdj + debugGravAdj, 2, Color.yellow);
+                Vector3 pos = debugTargetPosition;
+                GUIUtils.DrawLineBetweenWorldPositions(pos, pos + debugRelVelAdj, 2, Color.green);
+                pos += debugRelVelAdj;
+                GUIUtils.DrawLineBetweenWorldPositions(pos, pos + debugAccAdj, 2, Color.magenta);
+                pos += debugAccAdj;
+                GUIUtils.DrawLineBetweenWorldPositions(pos, pos + debugGravAdj, 2, Color.yellow);
                 GUIUtils.MarkPosition(finalAimTarget, transform, Color.cyan, size: 4);
                 if (targetInVisualRange && BDArmorySettings.AIMING_VISUAL_MALUS > 0)
-                    GUIUtils.DrawLineBetweenWorldPositions(debugTargetPosition + debugRelVelAdj + debugAccAdj + debugGravAdj, debugTargetPosition + debugRelVelAdj + debugAccAdj + debugGravAdj + BDArmorySettings.AIMING_VISUAL_MALUS * kinematicAimMalus, 2, Color.black);
+                {
+                    pos += debugGravAdj;
+                    GUIUtils.DrawLineBetweenWorldPositions(pos, pos + BDArmorySettings.AIMING_VISUAL_MALUS * kinematicAimMalus, 2, Color.black);
+                }
             }
         }
 
@@ -3865,7 +3871,7 @@ namespace BDArmory.Weapons
                                     // Debug.Log($"DEBUG {count} iterations for convergence in aiming loop");
                                     debugTargetPosition = targetPosition;
                                     debugLastTargetPosition = debugTargetPosition;
-                                    debugRelVelAdj = (targetVelocity - smoothedPartVelocity) * timeToCPA;
+                                    debugRelVelAdj = timeToCPA * targetVelocity - (timeToCPA + Time.fixedDeltaTime) * smoothedPartVelocity;
                                     debugAccAdj = 0.5f * targetAcceleration * timeToCPA * timeToCPA;
                                     debugGravAdj = bulletDropOffset;
                                     // var missDistance = AIUtils.PredictPosition(relativePosition, bulletRelativeVelocity, bulletRelativeAcceleration, timeToCPA);
