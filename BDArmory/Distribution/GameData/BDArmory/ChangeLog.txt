@@ -82,6 +82,8 @@
 	- Added "custom" warhead module, functions like a normal warhead, except it launches a bullet instead of exploding, integrated with missiles.
 	- Added setting in the "GameData/BDArmory/PluginData/Settings.cfg" file called "WEAPONS_RESPECT_CROSSFEED", this may be set to false to restore previous behavior where guns did not respect crossfeed rules.
 	- Improved performance of bullet firing code.
+	- Added a AIMING_VISUAL_MALUS setting (default=0) that applies a malus to aiming at targets with mk1 eyeballs.
+		- FIXME Add some details as to how it affects aiming.
 - Armor:
 	- Improved long-dart armor penetration mechanics, should have improved performance against consecutive plates in-contact with each other. Improved residual velocity formula.
 	- Implemented "realistic" model for explosive reactive armor against kinetic projectiles, now using a interaction length-based model, supports symmetrical and open-faced sandwich configurations.

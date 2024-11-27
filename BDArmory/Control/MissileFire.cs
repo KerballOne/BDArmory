@@ -1842,6 +1842,8 @@ namespace BDArmory.Control
 #if DEBUG
                             if (weapon.visualTargetVessel != null && weapon.visualTargetVessel.loaded) weaponAimDebugStrings.Add($" - Visual target {(weapon.visualTargetPart != null ? weapon.visualTargetPart.name : "CoM")} on {weapon.visualTargetVessel.vesselName}, distance: {(weapon.fireTransforms[0] != null ? (weapon.finalAimTarget - weapon.fireTransforms[0].position).magnitude : 0):F1}, radius: {weapon.targetRadius:F1} ({weapon.visualTargetVessel.GetBounds()}), max deviation: {weapon.maxDeviation}, firing tolerance: {weapon.FiringTolerance}");
                             if (weapon.turret) weaponAimDebugStrings.Add($" - Turret: pitch: {weapon.turret.Pitch:F3}° ({weapon.turret.minPitch}°—{weapon.turret.maxPitch}°), yaw: {weapon.turret.Yaw:F3}° ({-weapon.turret.yawRange / 2f}°—{weapon.turret.yawRange / 2f}°)");
+                            weaponAimDebugStrings.Add($" - Malus: {BDArmorySettings.AIMING_VISUAL_MALUS * weapon.kinematicAimMalus.magnitude:F2}, shots: {weapon.shotsFiredSinceAcquiringTarget}, reduction: {(1 + weapon.shotsFiredSinceAcquiringTarget) * Mathf.Min(1f + Time.time - weapon.targetAcquisitionTime, 10f):G4}");
+
 #endif
                         }
                         float shots = 0;

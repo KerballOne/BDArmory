@@ -256,6 +256,7 @@ namespace BDArmory.Settings
         [BDAPersistentSettingsField] public static bool PART_GLIMIT = false;
         [BDAPersistentSettingsField] public static bool KERB_GLIMIT = false;
         [BDAPersistentSettingsField] public static float G_TOLERANCE = 0.4f;                       // Adjust the GToleranceMult to set Max G endurance of all kerbs to a desired amount
+        [BDAPersistentSettingsField] public static float AIMING_VISUAL_MALUS = 0; // Malus to visual aiming with a mk1 eyeball.
         #endregion
 
         #region Battle Damage settings

@@ -168,6 +168,8 @@ namespace BDArmory.Weapons
         private Vector3 smoothedPartAcceleration; // Also apply smoothing to the part's acceleration, required for long-range aiming.
         readonly SmoothingV3 partAccelerationSmoothing = new(); // Smoothing for the part's acceleration, required for long-range aiming.
         readonly SmoothingV3 smoothedRelativeFinalTarget = new(0.5f); // Smoothing for the finalTarget aim-point: half-life of 1 frame. This seems good. More than 5 frames (0.1s) seems too slow.
+        public int shotsFiredSinceAcquiringTarget = 0;
+        public float targetAcquisitionTime = 0;
         public bool targetIsLandedOrSplashed = false; // Used in the targeting simulations to know whether to separate gravity from other acceleration.
         private float lastTimeToCPA = -1, deltaTimeToCPA = 0;
         float bulletTimeToCPA; // Time until the bullet is expected to reach the closest point to the target. Used for timing-based bullet detonation.
@@ -180,7 +182,11 @@ namespace BDArmory.Weapons
                 if (_visualTargetVessel != null && !_visualTargetVessel.gameObject.activeInHierarchy) _visualTargetVessel = null;
                 return _visualTargetVessel;
             }
-            set { _visualTargetVessel = value; }
+            set
+            {
+                lastVisualTargetVessel = _visualTargetVessel;
+                _visualTargetVessel = value;
+            }
         }
         Vessel _visualTargetVessel;
         public Vessel lastVisualTargetVessel
@@ -210,6 +216,7 @@ namespace BDArmory.Weapons
 
         private int targetID = 0;
         bool targetAcquired;
+        public bool targetInVisualRange = false;
 
         public bool targetCOM = true;
         public bool targetCockpits = false;
@@ -2154,6 +2161,8 @@ namespace BDArmory.Weapons
                 GUIUtils.DrawLineBetweenWorldPositions(debugTargetPosition + debugRelVelAdj, debugTargetPosition + debugRelVelAdj + debugAccAdj, 2, Color.magenta);
                 GUIUtils.DrawLineBetweenWorldPositions(debugTargetPosition + debugRelVelAdj + debugAccAdj, debugTargetPosition + debugRelVelAdj + debugAccAdj + debugGravAdj, 2, Color.yellow);
                 GUIUtils.MarkPosition(finalAimTarget, transform, Color.cyan, size: 4);
+                if (targetInVisualRange && BDArmorySettings.AIMING_VISUAL_MALUS > 0)
+                    GUIUtils.DrawLineBetweenWorldPositions(debugTargetPosition + debugRelVelAdj + debugAccAdj + debugGravAdj, debugTargetPosition + debugRelVelAdj + debugAccAdj + debugGravAdj + BDArmorySettings.AIMING_VISUAL_MALUS * kinematicAimMalus, 2, Color.black);
             }
         }
 
@@ -3409,7 +3418,7 @@ namespace BDArmory.Weapons
                     return;
                 }
             }
-            if (shutdownRoutine != null) 
+            if (shutdownRoutine != null)
                 return;
             if (disabledStates.Contains(weaponState))
                 return;
@@ -3537,6 +3546,8 @@ namespace BDArmory.Weapons
         #endregion Audio
 
         #region Targeting
+        public Vector3 kinematicAimMalus = default, kinematicAimMalusDelta = default;
+        // float rangeAimMalus = 0;
         void Aim()
         {
             //AI control
@@ -3715,7 +3726,8 @@ namespace BDArmory.Weapons
                     targetVelocity += 0.5f * Time.fixedDeltaTime * (supported ? targetAcceleration : targetAcceleration - (Vector3)FlightGlobals.getGeeForceAtPosition(targetPosition));
                     // There is no equivalent correction for the weapon part due to our specific placement of the bullet with the given velocity.
                 }
-                targetDistance = Vector3.Distance(targetPosition, fireTransform.parent.position);
+                Vector3 firePosition = fireTransform.position;
+                targetDistance = Vector3.Distance(targetPosition, firePosition);
                 origTargetDistance = targetDistance;
 
                 RunTrajectorySimulation(); // Run the trajectory sim after picking a target for this frame, otherwise a bunch of stuff is reset between frames. This is required for the rocket aiming.
@@ -3752,7 +3764,7 @@ namespace BDArmory.Weapons
                                     TimeWarp.fixedDeltaTime :
                                     TimeWarp.fixedDeltaTime - (TimeWarp.fixedDeltaTime + timeGap - timeSinceFired) % TimeWarp.fixedDeltaTime; // This is the iTime correction for the frame that the gun will actually fire on.
                                 if (iTime < 1e-4f) iTime = TimeWarp.fixedDeltaTime; // Avoid jitter by aliasing iTime < 1e-4 to TimeWarp.fixedDeltaTime for the frame after.
-                                var firePosition = AIUtils.PredictPosition(fireTransforms[0].position, smoothedPartVelocity, smoothedPartAcceleration, Time.fixedDeltaTime); // Position of the end of the barrel at the start of the next frame.
+                                firePosition = AIUtils.PredictPosition(fireTransforms[0].position, smoothedPartVelocity, smoothedPartAcceleration, Time.fixedDeltaTime); // Position of the end of the barrel at the start of the next frame.
 
                                 firingDirection = smoothedRelativeFinalTarget.At(Time.fixedDeltaTime).normalized; // Estimate of the current firing direction for this frame based on the previous frames.
                                 bulletAcceleration = bulletDrop ? (Vector3)FlightGlobals.getGeeForceAtPosition(firePosition) : Vector3.zero; // Acceleration at the start point.
@@ -3860,11 +3872,37 @@ namespace BDArmory.Weapons
                         case WeaponTypes.Rocket: //Rocket targeting
                             {
                                 finalTarget = AIUtils.PredictPosition(targetPosition, targetVelocity, targetAcceleration, predictedFlightTime) + trajectoryOffset;
-                                targetDistance = Mathf.Clamp(Vector3.Distance(targetPosition, fireTransform.parent.position), 0, maxTargetingRange);
+                                targetDistance = Mathf.Clamp(Vector3.Distance(targetPosition, firePosition), 0, maxTargetingRange);
                             }
                             break;
                     }
                 }
+                if (targetInVisualRange && BDArmorySettings.AIMING_VISUAL_MALUS > 0) // Apply a malus to visual aiming from mk1 eyeballs.
+                {
+                    // We want a slow random walk that improves rapidly with shots fired.
+                    // float size = BDArmorySettings.AIMING_VISUAL_MALUS * ((smoothedPartVelocity - targetVelocity).OneNorm() / (1 + shotsFiredSinceAcquiringTarget) + BDArmorySettings.AIMING_VISUAL_MALUS * (smoothedPartAcceleration - targetAcceleration).OneNorm());
+                    // kinematicAimMalus = factor * kinematicAimMalus + (1f - factor) * size * UnityEngine.Random.insideUnitSphere;
+                    float malusReduction = (1 + shotsFiredSinceAcquiringTarget) * Mathf.Min(1f + Time.time - targetAcquisitionTime, 10f);
+                    float size = 0.001f * targetDistance * (smoothedPartVelocity - targetVelocity).OneNorm() / malusReduction + (smoothedPartAcceleration - targetAcceleration).OneNorm();
+                    kinematicAimMalusDelta = 0.99f * kinematicAimMalusDelta + 0.01f * size * UnityEngine.Random.insideUnitSphere;
+                    kinematicAimMalus = 0.9f * kinematicAimMalus + 0.1f / malusReduction * kinematicAimMalusDelta;
+                    // rangeAimMalus = factor * rangeAimMalus + (1f - factor) / (1 + shotsFiredSinceAcquiringTarget) * UnityEngine.Random.Range(-0.01f, 0.01f);
+                    finalTarget += BDArmorySettings.AIMING_VISUAL_MALUS * kinematicAimMalus;
+                    fixedLeadOffset = originalTarget - finalTarget;
+                    // fixedLeadOffset *= 1f + rangeAimMalus; // Implicitly affected by targetDistance.
+                    finalAimTarget = originalTarget - fixedLeadOffset;
+                    targetDistance = Mathf.Clamp(Vector3.Distance(targetPosition, firePosition), 0, maxTargetingRange); // Move firePosition declaration outside the aim assist logic and set it for both rockets and guns.
+                }
+                else
+                {
+                    fixedLeadOffset = originalTarget - finalTarget; //for aiming fixed guns to moving target
+                    finalAimTarget = finalTarget;
+                }
+                staleFinalAimTarget = finalAimTarget;
+                staleTargetVelocity = targetVelocity + BDKrakensbane.FrameVelocityV3f;
+                staleTargetAcceleration = targetAcceleration;
+                stalePartVelocity = smoothedPartVelocity + BDKrakensbane.FrameVelocityV3f;
+                staleGoodTargetTime = Time.time;
                 //airdetonation
                 if (eFuzeType == BulletFuzeTypes.Timed || eFuzeType == BulletFuzeTypes.Flak)
                 {
@@ -3877,13 +3915,6 @@ namespace BDArmory.Weapons
                         defaultDetonationRange = maxEffectiveDistance; //airburst at max range
                     }
                 }
-                fixedLeadOffset = originalTarget - finalTarget; //for aiming fixed guns to moving target
-                finalAimTarget = finalTarget;
-                staleFinalAimTarget = finalAimTarget;
-                staleTargetVelocity = targetVelocity + BDKrakensbane.FrameVelocityV3f;
-                staleTargetAcceleration = targetAcceleration;
-                stalePartVelocity = smoothedPartVelocity + BDKrakensbane.FrameVelocityV3f;
-                staleGoodTargetTime = Time.time;
             }
 
             //final turret aiming
@@ -4728,8 +4759,17 @@ namespace BDArmory.Weapons
             }
             if (targetAcquired)
             {
-                bool reset = lastTargetAcquisitionType != targetAcquisitionType || (targetAcquisitionType == TargetAcquisitionType.Visual && lastVisualTargetVessel != visualTargetVessel);
+                bool reset = (lastTargetAcquisitionType != targetAcquisitionType) || (targetAcquisitionType == TargetAcquisitionType.Visual && lastVisualTargetVessel != visualTargetVessel);
                 SmoothTargetKinematics(targetPosition, targetVelocity, targetAcceleration, targetIsLandedOrSplashed, reset);
+                if (reset && BDArmorySettings.AIMING_VISUAL_MALUS > 0)
+                {
+                    shotsFiredSinceAcquiringTarget = (targetAcquisitionType == TargetAcquisitionType.Radar || targetAcquisitionType == TargetAcquisitionType.Slaved) ? 4 : 0; // Radar/slaved gives an initial starting bonus
+                    targetAcquisitionTime = Time.time;
+                    float size = 0.001f * (targetPosition - transform.position).OneNorm() * (smoothedPartVelocity - targetVelocity).OneNorm() + (smoothedPartAcceleration - targetAcceleration).OneNorm();
+                    kinematicAimMalusDelta = 0.1f * size * UnityEngine.Random.insideUnitSphere;
+                    kinematicAimMalus = 0.1f * kinematicAimMalusDelta;
+                    // rangeAimMalus = UnityEngine.Random.Range(-0.01f, 0.01f);
+                }
             }
 
             Aim();
@@ -4797,6 +4837,8 @@ namespace BDArmory.Weapons
                                 FireRocket();
                                 break;
                         }
+                        if (shotsFiredSinceAcquiringTarget < 99) // Avoid overflow and perfect visual aiming.
+                            ++shotsFiredSinceAcquiringTarget;
                     }
                 }
             }
@@ -5016,6 +5058,7 @@ namespace BDArmory.Weapons
         void UpdateTargetVessel()
         {
             targetAcquired = false;
+            targetInVisualRange = false;
             slaved = false;
             GPSTarget = false;
             radarTarget = false;
@@ -5037,14 +5080,12 @@ namespace BDArmory.Weapons
                     targetAcquisitionType = TargetAcquisitionType.None;
                 }
             }
-            lastVisualTargetVessel = visualTargetVessel;
 
             if (weaponManager)
             {
-                bool visRange = false;
                 if (visualTargetVessel)
                 {
-                    visRange = (visualTargetVessel.transform.position - transform.position).sqrMagnitude < weaponManager.guardRange * weaponManager.guardRange;
+                    targetInVisualRange = (visualTargetVessel.transform.position - transform.position).sqrMagnitude < weaponManager.guardRange * weaponManager.guardRange;
                 }
                 //moving radar aiming/turret slaving sections ahead of legacy, else they'll never proc outside of manual control or very short visual range settings
                 if (weaponManager.vesselRadarData && weaponManager.vesselRadarData.locked) //would only apply if fixed gun, else VRD would slave the weapon and the above block applies
@@ -5095,7 +5136,7 @@ namespace BDArmory.Weapons
                 }
 
                 // within visual range and no radar aiming/need precision visual targeting of specific subsystems
-                if (aiControlled && visualTargetVessel && visRange)
+                if (aiControlled && visualTargetVessel && targetInVisualRange)
                 {
                     //targetRadius = visualTargetVessel.GetRadius();
 
@@ -5545,7 +5586,7 @@ namespace BDArmory.Weapons
                 ReloadWeapon();
             }
             if (hasReloadAnim && isReloading) //wait for reload to finish before shutting down
-            {                
+            {
                 yield return new WaitWhileFixed(() => reloadState.normalizedTime < 1); //why is this not registering when in Guardmode?
             }
             if (!calledByReload) //allow isreloading to co-opt the startup/shutdown anim without disabling weapon in the process
