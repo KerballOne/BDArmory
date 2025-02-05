@@ -334,11 +334,11 @@ namespace BDArmory.VesselSpawning
             if (vessel.parts.Count > 0 && count > 0)
             {
                 var appendix = "_" + count;
-                foreach (var part in vessel.Parts.Where(p => p?.vesselNaming?.vesselName.Length > 2))
+                foreach (var part in vessel.Parts.Where(p => p?.vesselNaming?.vesselName.Length > 0))
                 {
                     if (!part.vesselNaming.vesselName.EndsWith(appendix))
                     {
-                        if (BDArmorySettings.DEBUG_SPAWNING) Debug.Log($"[BDArmory.VesselSpawnerBase(KB1)]: VESSELNAMING = {part.vesselNaming.vesselName}; Updating to {part.vesselNaming.vesselName}{appendix}");
+                        if (BDArmorySettings.DEBUG_SPAWNING) Debug.Log($"[BDArmory.VesselSpawnerBase]: VESSELNAMING = {part.vesselNaming.vesselName}; Updating to {part.vesselNaming.vesselName}{appendix}");
                         part.vesselNaming.vesselName = part.vesselNaming.vesselName + appendix;
                     }
                 }
