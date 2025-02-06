@@ -768,7 +768,7 @@ namespace BDArmory.UI
             if (wm.AI != null && wm.AI.currentStatus != null)
             {
                 // postStatus += " " + wm.AI.currentStatus;
-                VSEntryString.Append($"\t{wm.AI.currentStatus.PadRight(Math.Max(32, wm.AI.currentStatus.Length))}");
+                VSEntryString.Append($"\t{wm.AI.currentStatus.PadRight(32)}");
             }
             float targetDistance = 5000;
             if (wm.currentTarget != null)

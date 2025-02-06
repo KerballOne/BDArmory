@@ -207,8 +207,8 @@ namespace BDArmory.VesselSpawning
         #region Spawning
         public int vesselsSpawningCount = 0;
         protected string latestSpawnedVesselName = "";
-        protected Dictionary<string, Vessel> spawnedVessels = []; // Vessel name => vessel instance.
-        protected Dictionary<string, string> spawnedVesselURLs = []; // Vessel name => URL.
+        public static Dictionary<string, Vessel> spawnedVessels = []; // Vessel name => vessel instance.
+        public static Dictionary<string, string> spawnedVesselURLs = []; // Vessel name => URL.
         protected Dictionary<string, int> spawnedVesselsTeamIndex = []; // Vessel name => team index
         protected Dictionary<string, int> spawnedVesselPartCounts = []; // Vessel name => part count.
         protected Dictionary<string, Vector3d> finalSpawnPositions = []; // Vessel name => final spawn position as geo-coordinates (for later reuse).
